@@ -1,16 +1,11 @@
-import dynamic from "next/dynamic";
-
-// Three.js must not run on the server
-const Scene = dynamic(() => import("@/components/canvas/Scene"), {
-  ssr: false,
-});
+import SceneClient from "@/components/canvas/SceneClient";
 
 export default function Home() {
   return (
     <>
       {/* Fixed 3D canvas layer — behind everything */}
       <div className="canvas-layer">
-        <Scene />
+        <SceneClient />
       </div>
 
       {/* Scrollable DOM layer */}

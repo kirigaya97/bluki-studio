@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { initLenis } from "@/lib/lenis";
-import type { Lenis } from "lenis";
+import Lenis from "lenis";
 
 export default function LenisProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
