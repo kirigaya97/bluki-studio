@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0C0B0A;
+  --fg: #EAE4DC;
+  --accent: #9BAFC0;
+  --muted: #6A7E8A;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  /* Lenis overrides scroll behavior */
+  scroll-behavior: auto;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* Canvas layer — fixed behind everything */
+.canvas-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* DOM layer — scrollable on top */
+.dom-layer {
+  position: relative;
+  z-index: 1;
+}
