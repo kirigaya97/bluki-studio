@@ -6,6 +6,26 @@ import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { scrollState } from "@/lib/scrollState";
 
+// Targeted by material name — confirmed from model structure
+const MAT = {
+  // Big_* + Small_* petals — dark matte blue-grey
+  Base: {
+    color:             new THREE.Color("#1A2A36"),
+    emissive:          new THREE.Color("#000000"),
+    emissiveIntensity: 0,
+    roughness:         0.78,
+    metalness:         0.08,
+  },
+  // Sphere_Core_0 — soft glowing light blue
+  Core: {
+    color:             new THREE.Color("#5AAED4"),
+    emissive:          new THREE.Color("#2E7BAA"),
+    emissiveIntensity: 0.9,
+    roughness:         0.15,
+    metalness:         0.0,
+  },
+};
+
 useGLTF.preload("/models/abstract_core.glb");
 
 export default function Model() {
@@ -24,7 +44,7 @@ export default function Model() {
     scene.position.set(0, 0, 0);
     scene.updateMatrixWorld(true);
 
-    const box    = new THREE.Box3().setFromObject(scene);
+    const box = new THREE.Box3().setFromObject(scene);
     if (box.isEmpty()) return;
 
     const size   = box.getSize(new THREE.Vector3()).length();
@@ -37,32 +57,22 @@ export default function Model() {
     }
   }, [scene]);
 
-  // ── Material remapping ───────────────────────────────────────────────────
+  // ── Material remapping — targeted by material name ───────────────────────
   useEffect(() => {
     scene.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
       const orig = child.material as THREE.MeshStandardMaterial;
       if (!orig?.isMeshStandardMaterial) return;
 
-      // Log model structure so we can target nucleus by name next iteration
-      console.log("[Model mesh]", {
-        mesh:              child.name || "(unnamed)",
-        material:          orig.name  || "(unnamed)",
-        color:             "#" + orig.color.getHexString(),
-        emissive:          "#" + orig.emissive.getHexString(),
-        emissiveIntensity: orig.emissiveIntensity,
-        roughness:         orig.roughness,
-        metalness:         orig.metalness,
-      });
+      const src = MAT[orig.name as keyof typeof MAT];
+      if (!src) return; // skip any unmapped material
 
       const mat = orig.clone();
-      // Dark matte grey-blue for the whole model — confirms override works.
-      // Nucleus will be targeted by mesh/material name once we see the log output.
-      mat.color             = new THREE.Color("#263444");
-      mat.emissive          = new THREE.Color("#000000");
-      mat.emissiveIntensity = 0;
-      mat.roughness         = 0.72;
-      mat.metalness         = 0.08;
+      mat.color             = src.color.clone();
+      mat.emissive          = src.emissive.clone();
+      mat.emissiveIntensity = src.emissiveIntensity;
+      mat.roughness         = src.roughness;
+      mat.metalness         = src.metalness;
       mat.needsUpdate       = true;
       child.material        = mat;
     });
