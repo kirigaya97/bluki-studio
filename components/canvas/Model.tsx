@@ -112,19 +112,19 @@ export default function Model() {
       Math.min(1, delta * 3)
     );
 
-    const p = smoothP.current;
+    const p       = smoothP.current;
+    const elapsed = _state.clock.getElapsedTime();
 
-    // ── Continuous Y spin (always on) ─────────────────────────────────────
-    groupRef.current.rotation.y += delta * 0.2;
+    // ── Scroll-driven Y rotation ───────────────────────────────────────────
+    // 3 full rotations across the full scroll — stops when scrolling stops
+    groupRef.current.rotation.y = p * Math.PI * 6;
 
-    // ── Section-based scroll state ─────────────────────────────────────────
-    // Position X: centred → right → left (camera handles the rest)
+    // ── Vertical oscillation (time-based, independent of scroll) ──────────
+    groupRef.current.position.y = Math.sin(elapsed * 0.7) * 0.15;
+
+    // ── Section-based positions / tilt ────────────────────────────────────
     groupRef.current.position.x = lerp3(0, 0.8, -0.8, p);
-
-    // Z tilt: 15° → 45° → 90°
     groupRef.current.rotation.z = lerp3(DEG15, DEG45, DEG90, p);
-
-    // Scale: slightly smaller as you go deeper into scroll
     groupRef.current.scale.setScalar(lerp3(1.0, 0.88, 0.78, p));
   });
 
