@@ -6,22 +6,31 @@ import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { scrollState } from "@/lib/scrollState";
 
-// Targeted by material name — confirmed from model structure
+const DEG15 = Math.PI / 12;   // 0.26 rad
+const DEG45 = Math.PI / 4;    // 0.785 rad
+const DEG90 = Math.PI / 2;    // 1.571 rad
+
+/** Lerp across 3 keyframes: a at t=0, b at t=0.5, c at t=1 */
+function lerp3(a: number, b: number, c: number, t: number): number {
+  if (t <= 0.5) return THREE.MathUtils.lerp(a, b, t * 2);
+  return THREE.MathUtils.lerp(b, c, (t - 0.5) * 2);
+}
+
 const MAT = {
-  // Big_* + Small_* petals — dark matte blue-grey
+  // 25 petal meshes (Big_* + Small_*) — dark matte blue-grey
   Base: {
     color:             new THREE.Color("#1A2A36"),
     emissive:          new THREE.Color("#000000"),
     emissiveIntensity: 0,
     roughness:         0.78,
-    metalness:         0.08,
+    metalness:         0.06,
   },
-  // Sphere_Core_0 — soft glowing light blue
+  // Sphere_Core_0 — glowing light blue, roughness raised to kill specular spot
   Core: {
     color:             new THREE.Color("#5AAED4"),
     emissive:          new THREE.Color("#2E7BAA"),
-    emissiveIntensity: 0.9,
-    roughness:         0.15,
+    emissiveIntensity: 0.85,
+    roughness:         0.55,   // was 0.15 — raised to eliminate hot-spot
     metalness:         0.0,
   },
 };
@@ -35,7 +44,7 @@ export default function Model() {
 
   const { scene } = useGLTF("/models/abstract_core.glb");
 
-  // ── Auto-scale & center ──────────────────────────────────────────────────
+  // ── Auto-scale & center (once) ───────────────────────────────────────────
   useLayoutEffect(() => {
     if (normalizedRef.current) return;
     normalizedRef.current = true;
@@ -51,13 +60,13 @@ export default function Model() {
     const center = box.getCenter(new THREE.Vector3());
 
     if (normRef.current && size > 0) {
-      const s = 2.4 / size;
+      const s = 3.0 / size;   // larger than before (was 2.4)
       normRef.current.scale.setScalar(s);
       normRef.current.position.set(-center.x * s, -center.y * s, -center.z * s);
     }
   }, [scene]);
 
-  // ── Material remapping — targeted by material name ───────────────────────
+  // ── Material remapping — by material name ────────────────────────────────
   useEffect(() => {
     scene.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
@@ -65,7 +74,7 @@ export default function Model() {
       if (!orig?.isMeshStandardMaterial) return;
 
       const src = MAT[orig.name as keyof typeof MAT];
-      if (!src) return; // skip any unmapped material
+      if (!src) return;
 
       const mat = orig.clone();
       mat.color             = src.color.clone();
@@ -78,7 +87,7 @@ export default function Model() {
     });
   }, [scene]);
 
-  // ── Scroll tracking ──────────────────────────────────────────────────────
+  // ── Scroll tracking (native fallback) ───────────────────────────────────
   useEffect(() => {
     const onScroll = () => {
       const total = document.documentElement.scrollHeight - window.innerHeight;
@@ -91,22 +100,32 @@ export default function Model() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const lerpedProgress = useRef(0);
+  const smoothP = useRef(0);
 
   useFrame((_state, delta) => {
     if (!groupRef.current) return;
 
-    lerpedProgress.current = THREE.MathUtils.lerp(
-      lerpedProgress.current,
+    // Smooth scroll progress with slightly different lag than camera
+    smoothP.current = THREE.MathUtils.lerp(
+      smoothP.current,
       scrollState.progress,
-      Math.min(1, delta * 4)
+      Math.min(1, delta * 3)
     );
 
-    const p = lerpedProgress.current;
-    groupRef.current.rotation.y += delta * 0.18;
-    groupRef.current.rotation.x  = p * 0.5;
-    groupRef.current.position.y  = -p * 1.5;
-    groupRef.current.scale.setScalar(1 - p * 0.25);
+    const p = smoothP.current;
+
+    // ── Continuous Y spin (always on) ─────────────────────────────────────
+    groupRef.current.rotation.y += delta * 0.2;
+
+    // ── Section-based scroll state ─────────────────────────────────────────
+    // Position X: centred → right → left (camera handles the rest)
+    groupRef.current.position.x = lerp3(0, 0.8, -0.8, p);
+
+    // Z tilt: 15° → 45° → 90°
+    groupRef.current.rotation.z = lerp3(DEG15, DEG45, DEG90, p);
+
+    // Scale: slightly smaller as you go deeper into scroll
+    groupRef.current.scale.setScalar(lerp3(1.0, 0.88, 0.78, p));
   });
 
   return (

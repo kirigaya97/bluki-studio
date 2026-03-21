@@ -6,6 +6,7 @@ import { Suspense, Component, ReactNode } from "react";
 import * as THREE from "three";
 import Lights from "./Lights";
 import Model from "./Model";
+import CameraRig from "./CameraRig";
 
 class CanvasErrorBoundary extends Component<
   { children: ReactNode },
@@ -48,6 +49,7 @@ export default function Scene() {
       >
         <Suspense fallback={null}>
           {/* No <Environment> — studio HDRI + metallic materials = white blowout */}
+          <CameraRig />
           <Lights />
           <Model />
           <Preload all />
