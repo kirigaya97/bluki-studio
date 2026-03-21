@@ -6,24 +6,6 @@ import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { scrollState } from "@/lib/scrollState";
 
-// Explicit target palette — dark body, light-blue nucleus
-const MAT = {
-  petal: {
-    color:             new THREE.Color("#1E2E3A"), // dark blue-grey
-    emissive:          new THREE.Color("#0A1520"),
-    emissiveIntensity: 0.05,
-    roughness:         0.75,
-    metalness:         0.05,
-  },
-  nucleus: {
-    color:             new THREE.Color("#6AAED0"), // light blue
-    emissive:          new THREE.Color("#3A80AA"),
-    emissiveIntensity: 0.55,
-    roughness:         0.1,
-    metalness:         0.05,
-  },
-};
-
 useGLTF.preload("/models/abstract_core.glb");
 
 export default function Model() {
@@ -33,7 +15,7 @@ export default function Model() {
 
   const { scene } = useGLTF("/models/abstract_core.glb");
 
-  // ── Auto-scale & center (once, on a wrapper group) ──────────────────────
+  // ── Auto-scale & center ──────────────────────────────────────────────────
   useLayoutEffect(() => {
     if (normalizedRef.current) return;
     normalizedRef.current = true;
@@ -42,7 +24,7 @@ export default function Model() {
     scene.position.set(0, 0, 0);
     scene.updateMatrixWorld(true);
 
-    const box = new THREE.Box3().setFromObject(scene);
+    const box    = new THREE.Box3().setFromObject(scene);
     if (box.isEmpty()) return;
 
     const size   = box.getSize(new THREE.Vector3()).length();
@@ -62,25 +44,31 @@ export default function Model() {
       const orig = child.material as THREE.MeshStandardMaterial;
       if (!orig?.isMeshStandardMaterial) return;
 
+      // Log model structure so we can target nucleus by name next iteration
+      console.log("[Model mesh]", {
+        mesh:              child.name || "(unnamed)",
+        material:          orig.name  || "(unnamed)",
+        color:             "#" + orig.color.getHexString(),
+        emissive:          "#" + orig.emissive.getHexString(),
+        emissiveIntensity: orig.emissiveIntensity,
+        roughness:         orig.roughness,
+        metalness:         orig.metalness,
+      });
+
       const mat = orig.clone();
-
-      // Nucleus heuristic: originally emissive or cool-blue saturated
-      const isNucleus =
-        orig.emissiveIntensity > 0.3 ||
-        (orig.color.b > orig.color.r + 0.25 && orig.color.b > 0.4);
-
-      const src = isNucleus ? MAT.nucleus : MAT.petal;
-      mat.color             = src.color.clone();
-      mat.emissive          = src.emissive.clone();
-      mat.emissiveIntensity = src.emissiveIntensity;
-      mat.roughness         = src.roughness;
-      mat.metalness         = src.metalness;
+      // Dark matte grey-blue for the whole model — confirms override works.
+      // Nucleus will be targeted by mesh/material name once we see the log output.
+      mat.color             = new THREE.Color("#263444");
+      mat.emissive          = new THREE.Color("#000000");
+      mat.emissiveIntensity = 0;
+      mat.roughness         = 0.72;
+      mat.metalness         = 0.08;
       mat.needsUpdate       = true;
       child.material        = mat;
     });
   }, [scene]);
 
-  // ── Scroll tracking fallback (native, in case Lenis event doesn't fire) ─
+  // ── Scroll tracking ──────────────────────────────────────────────────────
   useEffect(() => {
     const onScroll = () => {
       const total = document.documentElement.scrollHeight - window.innerHeight;
