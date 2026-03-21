@@ -1,13 +1,12 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { Preload, Environment } from "@react-three/drei";
+import { Preload } from "@react-three/drei";
 import { Suspense, Component, ReactNode } from "react";
 import * as THREE from "three";
 import Lights from "./Lights";
 import Model from "./Model";
 
-// ── Error boundary — catches render errors inside Canvas ──────────────────────
 class CanvasErrorBoundary extends Component<
   { children: ReactNode },
   { error: Error | null }
@@ -23,7 +22,7 @@ class CanvasErrorBoundary extends Component<
     console.error("[Canvas]", error);
   }
   render() {
-    if (this.state.error) return null; // canvas fails silently; DOM content still shows
+    if (this.state.error) return null;
     return this.props.children;
   }
 }
@@ -34,22 +33,21 @@ export default function Scene() {
       <Canvas
         camera={{ position: [0, 0, 4.5], fov: 50 }}
         gl={{
-          antialias: false, // disabled — SMAA post-processing ready for later
+          antialias: false,
           alpha: true,
           powerPreference: "high-performance",
         }}
         onCreated={({ gl }) => {
           gl.outputColorSpace = THREE.SRGBColorSpace;
+          // Tone mapping prevents light blow-out on Intel/ANGLE
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.toneMappingExposure = 0.9;
         }}
         dpr={[1, 2]}
         style={{ background: "transparent" }}
       >
         <Suspense fallback={null}>
-          {/*
-            Environment provides HDRI-based ambient lighting — ensures the model
-            is always visible regardless of custom light positions/intensities.
-          */}
-          <Environment preset="studio" />
+          {/* No <Environment> — studio HDRI + metallic materials = white blowout */}
           <Lights />
           <Model />
           <Preload all />
