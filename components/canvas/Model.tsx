@@ -6,30 +6,38 @@ import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { scrollState } from "@/lib/scrollState";
 
-const BRAND = {
-  petalBase:        new THREE.Color("#B0C8DC"),
-  nucleusGlow:      new THREE.Color("#DDF0FF"),
-  emissiveNucleus:  new THREE.Color("#88BBDD"),
-  emissivePetal:    new THREE.Color("#6090A8"),
+// Explicit target palette — dark body, light-blue nucleus
+const MAT = {
+  petal: {
+    color:             new THREE.Color("#1E2E3A"), // dark blue-grey
+    emissive:          new THREE.Color("#0A1520"),
+    emissiveIntensity: 0.05,
+    roughness:         0.75,
+    metalness:         0.05,
+  },
+  nucleus: {
+    color:             new THREE.Color("#6AAED0"), // light blue
+    emissive:          new THREE.Color("#3A80AA"),
+    emissiveIntensity: 0.55,
+    roughness:         0.1,
+    metalness:         0.05,
+  },
 };
 
 useGLTF.preload("/models/abstract_core.glb");
 
 export default function Model() {
-  const groupRef    = useRef<THREE.Group>(null);
-  const normRef     = useRef<THREE.Group>(null);
-  // Prevent re-running in React 18 strict-mode double-mount
+  const groupRef      = useRef<THREE.Group>(null);
+  const normRef       = useRef<THREE.Group>(null);
   const normalizedRef = useRef(false);
 
   const { scene } = useGLTF("/models/abstract_core.glb");
 
-  // ── Auto-scale & center (runs once, applied to wrapper group) ────────────
+  // ── Auto-scale & center (once, on a wrapper group) ──────────────────────
   useLayoutEffect(() => {
     if (normalizedRef.current) return;
     normalizedRef.current = true;
 
-    // Reset scene to identity so the Box3 always measures true geometry size,
-    // not a previously-applied scale from a cached/remounted scene.
     scene.scale.set(1, 1, 1);
     scene.position.set(0, 0, 0);
     scene.updateMatrixWorld(true);
@@ -41,13 +49,9 @@ export default function Model() {
     const center = box.getCenter(new THREE.Vector3());
 
     if (normRef.current && size > 0) {
-      const scale = 2.4 / size;
-      normRef.current.scale.setScalar(scale);
-      normRef.current.position.set(
-        -center.x * scale,
-        -center.y * scale,
-        -center.z * scale
-      );
+      const s = 2.4 / size;
+      normRef.current.scale.setScalar(s);
+      normRef.current.position.set(-center.x * s, -center.y * s, -center.z * s);
     }
   }, [scene]);
 
@@ -55,33 +59,39 @@ export default function Model() {
   useEffect(() => {
     scene.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
-      const original = child.material as THREE.MeshStandardMaterial;
-      if (!original?.isMeshStandardMaterial) return;
+      const orig = child.material as THREE.MeshStandardMaterial;
+      if (!orig?.isMeshStandardMaterial) return;
 
-      const mat = original.clone();
+      const mat = orig.clone();
 
+      // Nucleus heuristic: originally emissive or cool-blue saturated
       const isNucleus =
-        mat.emissiveIntensity > 0.4 ||
-        (mat.color.r < 0.35 && mat.color.b > 0.55);
+        orig.emissiveIntensity > 0.3 ||
+        (orig.color.b > orig.color.r + 0.25 && orig.color.b > 0.4);
 
-      if (isNucleus) {
-        mat.color             = BRAND.nucleusGlow.clone();
-        mat.emissive          = BRAND.emissiveNucleus.clone();
-        mat.emissiveIntensity = 0.6;
-        mat.roughness         = 0.08;
-        mat.metalness         = 0.1;   // low metalness = no HDRI blowout
-      } else {
-        mat.color             = BRAND.petalBase.clone();
-        mat.emissive          = BRAND.emissivePetal.clone();
-        mat.emissiveIntensity = 0.12;
-        mat.roughness         = 0.3;
-        mat.metalness         = 0.25;  // low metalness = predictable lighting
-      }
-
-      mat.needsUpdate = true;
-      child.material  = mat;
+      const src = isNucleus ? MAT.nucleus : MAT.petal;
+      mat.color             = src.color.clone();
+      mat.emissive          = src.emissive.clone();
+      mat.emissiveIntensity = src.emissiveIntensity;
+      mat.roughness         = src.roughness;
+      mat.metalness         = src.metalness;
+      mat.needsUpdate       = true;
+      child.material        = mat;
     });
   }, [scene]);
+
+  // ── Scroll tracking fallback (native, in case Lenis event doesn't fire) ─
+  useEffect(() => {
+    const onScroll = () => {
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      if (total > 0) {
+        scrollState.scrollY  = window.scrollY;
+        scrollState.progress = window.scrollY / total;
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const lerpedProgress = useRef(0);
 
@@ -102,8 +112,6 @@ export default function Model() {
   });
 
   return (
-    // groupRef   → animated by scroll/rotation
-    // normRef    → static normalization (scale + center), set once in useLayoutEffect
     <group ref={groupRef}>
       <group ref={normRef}>
         <primitive object={scene} />

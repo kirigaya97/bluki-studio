@@ -11,9 +11,12 @@ export function initLenis(): Lenis {
     easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
   });
 
-  lenis.on("scroll", ({ scroll, progress }: { scroll: number; progress: number }) => {
-    scrollState.scrollY = scroll;
-    scrollState.progress = progress;
+  // Lenis 1.x scroll event — the callback receives the Lenis instance itself
+  // (not a plain object), so read properties off it directly.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  lenis.on("scroll", (e: any) => {
+    scrollState.scrollY  = e.scroll    ?? e.scrollY ?? 0;
+    scrollState.progress = e.progress  ?? 0;
     ScrollTrigger.update();
   });
 
@@ -21,7 +24,6 @@ export function initLenis(): Lenis {
     lenis.raf(time * 1000);
   });
 
-  // Critical: disable lag smoothing to prevent animation delays
   gsap.ticker.lagSmoothing(0);
 
   return lenis;
