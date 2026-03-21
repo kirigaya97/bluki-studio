@@ -1,36 +1,28 @@
 "use client";
 
 /**
- * Scene lighting — kept as a stable component to avoid shader recompilation.
- * Never add/remove lights dynamically; toggle visibility or intensity instead.
+ * Scene lighting — never add/remove lights at runtime (causes shader recompile).
+ * Tune intensity/color only.
  */
 export default function Lights() {
   return (
     <>
-      {/* Soft ambient fill */}
-      <ambientLight color="#C8D4DC" intensity={0.6} />
+      {/* Strong ambient so the whole model is readable */}
+      <ambientLight color="#C8D8E8" intensity={2.5} />
 
-      {/* Key light — slightly warm, from above-right */}
-      <directionalLight
-        color="#EAE4DC"
-        intensity={1.2}
-        position={[4, 6, 3]}
-      />
+      {/* Primary key — warm, high angle */}
+      <directionalLight color="#EDE8E0" intensity={4.0} position={[4, 8, 4]} />
 
-      {/* Fill light — cool, from left */}
-      <directionalLight
-        color="#A8C0D4"
-        intensity={0.4}
-        position={[-4, 2, -2]}
-      />
+      {/* Rim light — cool, from behind-left */}
+      <directionalLight color="#A8C4DC" intensity={1.5} position={[-5, 2, -3]} />
 
-      {/* Nucleus glow simulation — soft point light from center */}
+      {/* Nucleus point light — simulates inner glow */}
       <pointLight
-        color="#D4E8F0"
-        intensity={2.0}
-        distance={8}
+        color="#C8E8FF"
+        intensity={8}
+        distance={10}
         decay={2}
-        position={[0, 0, 0.5]}
+        position={[0, 0, 0.8]}
       />
     </>
   );
